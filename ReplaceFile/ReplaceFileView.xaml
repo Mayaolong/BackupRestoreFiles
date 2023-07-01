@@ -1,0 +1,184 @@
+﻿<UserControl x:Class="ReplaceFile.ReplaceFileView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:ReplaceFile"
+             mc:Ignorable="d" 
+             Width="auto"  >
+    <Border  Background="GhostWhite" BorderBrush="Gainsboro" BorderThickness="5" CornerRadius="5">
+        <Grid >
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="20"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="auto" MinHeight="35"></RowDefinition>
+                <RowDefinition></RowDefinition>
+                <RowDefinition Height="auto" MinHeight="35"></RowDefinition>
+                <RowDefinition Height="auto" ></RowDefinition>
+            </Grid.RowDefinitions>
+            <Grid >
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width ="auto"></ColumnDefinition>
+                    <ColumnDefinition Width ="*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Button Content="选择文件"
+                        Command="{Binding SelectFiles}"
+                        Margin="5 3 5 3" />
+                <TextBox x:Name="SrcFilePath"
+                          Margin="5 3 5 3"
+                         Grid.Column="1"
+                         VerticalContentAlignment="Center"
+                         HorizontalContentAlignment="Left"
+                         Text="{Binding SrcFilePath}">
+                    <TextBox.ToolTip>
+                        <ToolTip>
+                            <StackPanel Orientation="Horizontal">
+                                <!--<TextBlock Text="{Binding ElementName=btn_TargetPath, Path=Name, Mode=TwoWay}"/>-->
+                                <TextBlock Text="选择文件: "/>
+                                <TextBlock Text="{Binding SrcFilePath}"/>
+                            </StackPanel>
+                        </ToolTip>
+                    </TextBox.ToolTip>
+                </TextBox>
+            </Grid>
+            <Grid Grid.Column="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition  Width ="auto"></ColumnDefinition>
+                    <ColumnDefinition  Width ="*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Button 
+                        Name="btn_TargetPath"
+                         Content="目标路径" 
+                        Command="{Binding SelectTarPath}"
+                         Margin="5 3 5 3"/>
+                <TextBox x:Name="TargetFilePath"
+                          Margin="5 3 5 3"
+                         Grid.Column="1" 
+                         VerticalContentAlignment="Center"
+                         HorizontalContentAlignment="Left"
+                         Text="{Binding TarFilePath}">
+                    <TextBox.ToolTip>
+                        <ToolTip>
+                            <StackPanel Orientation="Horizontal">
+                                <!--<TextBlock Text="{Binding ElementName=btn_TargetPath, Path=Name, Mode=TwoWay}"/>-->
+                                <TextBlock Text="目标路径: "/>
+                                <TextBlock Text="{Binding TarFilePath}"/>
+                            </StackPanel>
+                        </ToolTip>
+                    </TextBox.ToolTip>
+                </TextBox>
+            </Grid>
+            <Grid x:Name="SrcFiles" Grid.Row="1"
+                   Margin="5 3 5 3">
+                <ListBox
+                     SelectionMode="Extended"
+                ItemsSource="{Binding SrcFiles}"
+                     SelectionChanged="ListBox_SelectionChanged">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <CheckBox Content="{Binding Name}" IsChecked="{Binding IsCheck}"></CheckBox>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+            <Grid x:Name="TargetFiles" Grid.Row="1" Grid.Column="2"  Margin="5 3 5 3">
+                <ListBox 
+                    
+                     SelectionMode="Extended"
+                     ItemsSource="{Binding TargetFiles}"
+                     SelectionChanged="ListBox_SelectionChanged">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <CheckBox Content="{Binding Name}" IsChecked="{Binding IsCheck}"></CheckBox>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+            <UniformGrid Grid.Row="2" Grid.ColumnSpan="3" Height="30" Columns="4">
+
+                <Button Content="替换文件"
+                    Margin="5 3 5 0"
+                    ToolTip="替换"
+                    Command="{Binding ReplaceFilesCommand}"
+                    IsEnabled="{Binding EnableReplaceButton}"/>
+                <!-- Content="&lt;&lt;" -->
+                <Button Content="还原最后一次"
+                    Margin="5 3 5 0"
+                    Command="{Binding UndoLastReplaceCommand}"
+                    IsEnabled="{Binding EnableRestoreLastButton}"/>
+
+                <Button Content="还原历史"
+                    Margin="5 3 5 0"
+                    ToolTip="还原历史"
+                    Command="{Binding RestoreCommand}" 
+                    IsEnabled="{Binding EnableRestoreHistory}"/>
+                <Button Content="{Binding SwitchHistoryBtnName}"
+                    Margin="5 3 5 0"
+                    Command="{Binding SwitchHistoryVisibleCommand}"/>
+            </UniformGrid>
+            <Grid Grid.Row="3" Name="History" Grid.ColumnSpan="3" Visibility="{Binding HistoryVisibility}" >
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto"></RowDefinition>
+                    <RowDefinition></RowDefinition>
+                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="5 3 5 3">
+                    <TextBlock Text="历史总数"></TextBlock>
+                    <TextBlock Text="{ Binding HistoryTotal}" HorizontalAlignment="Left" Margin="3 0 0 0"></TextBlock>
+                </StackPanel>
+                    <TreeView Grid.Row="1" x:Name="tvList" ItemsSource="{Binding HistoryFileInfos}"   
+                       Visibility="Visible"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                      MinHeight="100" MaxHeight="200">
+                        <TreeView.ItemTemplate >
+                            <HierarchicalDataTemplate ItemsSource="{Binding HistoryFileInfos}">
+                                <StackPanel Orientation="Vertical">
+                                    <CheckBox Content="{Binding ReplacedTime}" IsChecked="{Binding IsCheck}"></CheckBox>
+                                    <ListBox ItemsSource="{Binding HistoryFiles}"  BorderThickness="0">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="8 0 0 0">
+                                                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsCheck}"></CheckBox>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                        <!--<ListBox.Template>
+                                    <ControlTemplate TargetType="{x:Type ListBox}">
+                                        <WrapPanel Orientation="Vertical" IsItemsHost="True"/>
+                                    </ControlTemplate>
+                                </ListBox.Template>-->
+                                    </ListBox>
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+               
+                <!--<ListBox x:Name="HistoryFiles" ItemsSource="{Binding HistoryFileInfos}" Visibility="Collapsed">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel>
+                            <CheckBox Content="{Binding ReplacedTime}" IsChecked="{Binding IsCheck}"></CheckBox>
+                            <ListBox ItemsSource="{Binding HistoryFiles}" Margin="8 0 0 0">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <CheckBox Content="{Binding Name}" IsChecked="{Binding IsCheck}"></CheckBox>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>-->
+            </Grid>
+        </Grid>
+    </Border>
+    
+</UserControl>
