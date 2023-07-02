@@ -139,7 +139,7 @@
                         <TreeView.ItemTemplate >
                             <HierarchicalDataTemplate ItemsSource="{Binding HistoryFileInfos}">
                                 <StackPanel Orientation="Vertical">
-                                    <CheckBox Content="{Binding ReplacedTime}" IsChecked="{Binding IsCheck}"></CheckBox>
+                                <CheckBox Content="{Binding DisplayName}" IsChecked="{Binding IsCheck}"></CheckBox>
                                     <ListBox ItemsSource="{Binding HistoryFiles}"  BorderThickness="0">
                                         <ListBox.ItemTemplate>
                                             <DataTemplate>
