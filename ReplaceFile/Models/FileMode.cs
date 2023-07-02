@@ -82,10 +82,34 @@ namespace ReplaceFile.Models
             {
                 _replacedTime = value;
                 RaisePropertyChanged("ReplacedTime");
+                try
+                {
+                    Console.WriteLine("_replacedTime "+ _replacedTime);
+                    var temp = DateTime.ParseExact(_replacedTime, "yyyyMMddHHmmss.fff", System.Globalization.CultureInfo.CurrentCulture);
+                    DisplayName = temp.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                }
+                catch (Exception ex)
+                {
+
+                    Console.WriteLine("DateTime is error "+ex.ToString());   
+                }   
+            }
+        }
+        private string _displayName;
+
+        public string DisplayName
+        {
+            get
+            {
+                return _displayName;
+            }
+            set
+            {
+                _displayName = value;
+                RaisePropertyChanged("DisplayName");
 
             }
         }
-
         private string _replacedPath;
 
         public string ReplacedPath
@@ -118,7 +142,7 @@ namespace ReplaceFile.Models
 
         public override string ToString()
         {
-            return ReplacedTime.ToString();
+            return "myl"+ReplacedTime.ToString();
         }
 
         public ObservableCollection<ReplaceFile.Models.FileMode> HistoryFiles { get; set; } = new ObservableCollection<ReplaceFile.Models.FileMode>();
