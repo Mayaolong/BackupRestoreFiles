@@ -142,7 +142,7 @@ namespace ReplaceFile.Models
 
         public override string ToString()
         {
-            return "myl"+ReplacedTime.ToString();
+            return ReplacedTime.ToString();
         }
 
         public ObservableCollection<ReplaceFile.Models.FileMode> HistoryFiles { get; set; } = new ObservableCollection<ReplaceFile.Models.FileMode>();
