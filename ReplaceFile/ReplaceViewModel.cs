@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -246,7 +247,7 @@ namespace ReplaceFile
         private void FilterFiles(object param)
         {
             SelectedToReplaceFiles = SrcFiles.Where(x=>x.IsCheck);
-            EnableReplaceButton = SelectedToReplaceFiles.Count() > 0;
+            EnableReplaceButton = SelectedToReplaceFiles.Any();
             Console.WriteLine("SelectedToReplaceFiles count:"+ SelectedToReplaceFiles.Count());
 
             SelectedRestoreBackUpFiles.Clear();
@@ -263,10 +264,6 @@ namespace ReplaceFile
                 if (fileModes.Count > 0)
                 {
                     SelectedRestoreBackUpFiles.Add(HistoryFileInfo.ReplacedTime, fileModes);
-                }
-                else
-                {
-                    fileModes = null;
                 }
             }
             Console.WriteLine("SelectedRestoreBackUpFiles count:" + SelectedRestoreBackUpFiles.Count);
@@ -302,17 +299,13 @@ namespace ReplaceFile
                 {
                     SelectedRestoreBackUpFiles.Add(HistoryFileInfo.ReplacedTime, fileModes);
                 }
-                else
-                {
-                    fileModes = null;
-                }
             }
             Console.WriteLine("SelectedRestoreBackUpFiles count:" + SelectedRestoreBackUpFiles.Count);
         }
         private void FilterTargetFiles(object param)
         {
             SelectedLastBackUpFiles = TargetFiles.Where(x => x.IsCheck);
-            EnableRestoreLastButton = TargetFiles.Where(x => x.IsCheck).Count() > 0;
+            EnableRestoreLastButton = TargetFiles.Any(x => x.IsCheck);
             Console.WriteLine("[FilterTargetFiles] EnableRestoreLastButton: " + EnableRestoreLastButton);
 
         }
@@ -323,35 +316,44 @@ namespace ReplaceFile
 
         private void UndoLastReplace(object param)
         {
-            if (_lastReplaceFileinfos.Values != null && _lastReplaceFileinfos.Values.Count > 0)
+            try
             {
-                var time = _lastReplaceFileinfos.First().Key;
-                Console.WriteLine("[UndoLastReplace] path:"+ TarFilePath);
-                Console.WriteLine("[UndoLastReplace] replaceFilesTime:"+ time.ToString("yyyyMMddHHmmss.fff"));
-                foreach (var ReplaceFileinfo in _lastReplaceFileinfos.Values.First())
+                if (_lastReplaceFileinfos.Values != null && _lastReplaceFileinfos.Values.Count > 0)
                 {
-                    var srcfileFullName = TarFilePath+"\\"+ ReplaceFileinfo.Key;
-                    var tarfileFullName = TarFilePath + "\\" + ReplaceFileinfo.Value;
+                    var time = _lastReplaceFileinfos.First().Key;
+                    Console.WriteLine("[UndoLastReplace] path:" + TarFilePath);
+                    Console.WriteLine("[UndoLastReplace] replaceFilesTime:" + time.ToString("yyyyMMddHHmmss.fff"));
+                    foreach (var ReplaceFileinfo in _lastReplaceFileinfos.Values.First())
+                    {
+                        var srcfileFullName = TarFilePath + "\\" + ReplaceFileinfo.Key;
+                        var tarfileFullName = TarFilePath + "\\" + ReplaceFileinfo.Value;
 
-                    if (File.Exists(srcfileFullName))
-                    {
-                        //恢复
-                        File.Delete(tarfileFullName);
-                        File.Move(srcfileFullName, tarfileFullName);//需要先删除已经存在的文件
+                        if (File.Exists(srcfileFullName))
+                        {
+                            //恢复
+                            File.Delete(tarfileFullName);
+                            File.Move(srcfileFullName, tarfileFullName);//需要先删除已经存在的文件
+                        }
+                        else if (!ReplaceFileinfo.Key.Contains("+")) //在替换时，目的路径没有对应的文件，因此没有备份文件。因此在还原时，直接删除之前替换进来的文件即可
+                        {
+                            File.Delete(tarfileFullName);
+                        }
+                        else
+                        {
+                            Console.WriteLine($"File {srcfileFullName} don't exist.");
+                        }
                     }
-                    else if (!ReplaceFileinfo.Key.Contains("+")) //在替换时，目的路径没有对应的文件，因此没有备份文件。因此在还原时，直接删除之前替换进来的文件即可
-                    {
-                        File.Delete(tarfileFullName);
-                    }
-                    else
-                    {
-                        Console.WriteLine($"File {srcfileFullName} don't exist.");
-                    }
+                    TargetFiles.Clear();
+                    DeleteOneTimeReplace(_lastReplaceFileinfos.Keys.First());
                 }
-                TargetFiles.Clear();
-                DeleteOneTimeReplace(_lastReplaceFileinfos.Keys.First());
+
             }
-           
+            catch (Exception ex)
+            {
+
+                 System.Windows.MessageBox.Show("还原最近一次文件时出现未知错误，请检查后重试！\n "+ ex.ToString(), "还原最近一次失败", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            }
+
         }
         private void Restore(object param)
         {
@@ -387,102 +389,238 @@ namespace ReplaceFile
         }
         private void RestoreSelectedFiles(object param)
         {
-
-            // 1.还原
-            if (SelectedRestoreBackUpFiles.Values != null && SelectedRestoreBackUpFiles.Values.Count > 0)
+            try
             {
-                foreach (var backUpFile in SelectedRestoreBackUpFiles)
+                // 1.还原
+                if (SelectedRestoreBackUpFiles.Values != null && SelectedRestoreBackUpFiles.Values.Count > 0)
                 {
-                    foreach (var file in backUpFile.Value)
+                    string occupiedFiles = "";
+                    for (var selectedGroupIndex = SelectedRestoreBackUpFiles.Count - 1; selectedGroupIndex >= 0; --selectedGroupIndex)
                     {
-                        if (File.Exists(file.Key))
+                        for (int fileIndex = SelectedRestoreBackUpFiles.ElementAt(selectedGroupIndex).Value.Count - 1; fileIndex >= 0; --fileIndex)
                         {
-                            //恢复
-                            File.Delete(file.Value);
-                            File.Move(file.Key, file.Value);//需要先删除已经存在的文件
-                        }
-                        else if (!file.Key.Contains("+")) //在替换时，目的路径没有对应的文件，因此没有备份文件。因此在还原时，直接删除之前替换进来的文件即可
-                        {
-                            Console.WriteLine("删除后，目标路径下将不存在运行时所需文件,file:"+ file.Value);
-                            File.Delete(file.Value);
-                        }
-                        else
-                        {
-                            Console.WriteLine($"File {file.Key} don't exist.");
+                            var restoreFile = SelectedRestoreBackUpFiles.ElementAt(selectedGroupIndex).Value.ElementAt(fileIndex).Key;   //之前备份的文件，用于替换正在使用的
+                            var deletedFile = SelectedRestoreBackUpFiles.ElementAt(selectedGroupIndex).Value.ElementAt(fileIndex).Value; //正在使用，即将被删除的文件
+                            if (IsFileOccupied(deletedFile))
+                            {
+                                occupiedFiles = occupiedFiles + "\n" + deletedFile;
+                                SelectedRestoreBackUpFiles.ElementAt(selectedGroupIndex).Value.Remove(restoreFile);
+                                if (SelectedRestoreBackUpFiles.ElementAt(selectedGroupIndex).Value.Count == 0)
+                                {
+                                    SelectedRestoreBackUpFiles.Remove(SelectedRestoreBackUpFiles.ElementAt(selectedGroupIndex).Key);
+                                }
+                                continue;
+                            }
+                            if (File.Exists(deletedFile))
+                            {
+                                //恢复
+                                File.Delete(deletedFile);
+
+                                if (restoreFile.Contains("+"))
+                                {
+                                    //restoreFile可能是一个不存的文件名，那么就会崩溃。如果之前替换文件时，目标路径下不存在这个文件，那么这里的restoreFile就不是一个有效的文件
+                                    File.Move(restoreFile, deletedFile);//需要先删除已经存在的文件， 
+                                }
+                                else
+                                {
+                                 
+                                    System.Windows.MessageBox.Show($"目标路径下已经还原为不存在{deletedFile}文件 状态！\n", "还原历史文件", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+                                }
+                            }
+                            else if (!restoreFile.Contains("+")) //在替换时，目的路径没有对应的文件，因此没有备份文件。因此在还原时，直接删除之前替换进来的文件即可
+                            {
+                                Console.WriteLine("删除后，目标路径下将不存在运行时所需文件,file:" + deletedFile);
+                                File.Delete(deletedFile);
+                            }
+                            else
+                            {
+                                if (restoreFile.Contains("+"))
+                                {
+                                    //restoreFile可能是一个不存的文件名，那么就会崩溃。如果之前替换文件时，目标路径下不存在这个文件，那么这里的restoreFile就不是一个有效的文件
+                                    File.Move(restoreFile, deletedFile);//需要先删除已经存在的文件， 
+                                }
+                                else
+                                {
+
+                                    System.Windows.MessageBox.Show($"目标路径下已经还原为不存在{deletedFile}文件 状态！\n", "还原历史文件", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+                                }
+                                //File.Move(restoreFile, deletedFile); 
+                            }
                         }
                     }
+                    //foreach (var backUpFile in SelectedRestoreBackUpFiles)
+                    //{
+                    //    foreach (var file in backUpFile.Value)
+                    //    {
+                    //        if (FilesOccupied(file.Key))
+                    //        {
+                    //            occupiedFiles = occupiedFiles + "\n" + file.Key;
+                    //            continue;
+                    //        }
+                    //        if (File.Exists(file.Key))
+                    //        {
+                    //            //恢复
+                    //            File.Delete(file.Value);
+                    //            File.Move(file.Key, file.Value);//需要先删除已经存在的文件
+                    //        }
+                    //        else if (!file.Key.Contains("+")) //在替换时，目的路径没有对应的文件，因此没有备份文件。因此在还原时，直接删除之前替换进来的文件即可
+                    //        {
+                    //            Console.WriteLine("删除后，目标路径下将不存在运行时所需文件,file:"+ file.Value);
+                    //            File.Delete(file.Value);
+                    //        }
+                    //        else
+                    //        {
+                    //            Console.WriteLine($"File {file.Key} don't exist.");
+                    //        }
+                    //    }
+                    //}
+
+                    TargetFiles.Clear();
+                    _lastReplaceFileinfos.Clear();
+                    RestoreFiles(SelectedRestoreBackUpFiles);
+                    ReadConfig();
+                    if (!string.IsNullOrEmpty(occupiedFiles))
+                    {
+                        System.Windows.MessageBox.Show("部分文件因文件被占用而还原失败，请检查后重试！\n" + occupiedFiles, "还原历史文件", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                    }
                 }
-                TargetFiles.Clear();
-                _lastReplaceFileinfos.Clear();
-                RestoreFiles(SelectedRestoreBackUpFiles);
-                ReadConfig();
+            }
+            catch (Exception ex)
+            {
+
+                 System.Windows.MessageBox.Show("还原历史文件时出现未知错误，请检查后重试！\n "+ ex.ToString(), "还原历史文件", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            }
+
+        }
+
+
+
+        [DllImport("kernel32.dll")]
+        public static extern IntPtr _lopen(string lppathName, int iReadWrite);
+        [DllImport("kernel32.dll")]
+        public static extern bool CloseHandle(IntPtr hobject);
+        public const int OF_READWRITE = 2;
+        public const int OF_SHARE_DENY_NONE = 0x40;
+        public static readonly IntPtr HFILE_ERROR = new IntPtr(-1);
+        /// <summary>
+        /// 查看文件是否被占用
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
+        public bool IsFileOccupied(string filePath)
+        {
+            if (!File.Exists(filePath)) 
+            {
+                return false;
+            }
+
+            IntPtr vHandle = _lopen(filePath, OF_READWRITE | OF_SHARE_DENY_NONE);
+             CloseHandle(vHandle);
+            return vHandle == HFILE_ERROR ;
+        }
+
+
+        private bool FilesOccupied(string filePath)
+        {
+            try
+            {
+                using (FileStream stream = new FileStream(filePath, System.IO.FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                {
+                    // 文件未被占用
+                    stream.Close();
+                    return false;
+                }
+            }
+            catch (IOException)
+            {
+                // 文件被占用
+                return true;
             }
         }
         private void CopyFiles(string srcPath,string tarPath)
         {
-            //判断相同路径
-            Console.WriteLine("[CopyFiles] srcPath:" + srcPath);
-            Console.WriteLine("[CopyFiles] tarPath:" + tarPath);
-            if ( !Directory.Exists(srcPath) || !Directory.Exists(tarPath) || Directory.Equals(srcPath, tarPath))
+            try
             {
-                Console.WriteLine("file path is error,src is the same to target");
-                return;
-            }
-            if (SrcFiles.Where(x => x.IsCheck).Count() < 0)
-            {
-               Console.WriteLine("[CopyFiles] no files is selected ");
-                return;
-
-            }
-            if (!Directory.Exists(tarPath))
-            {
-                Directory.CreateDirectory(tarPath);
-            }
-            Dictionary<DateTime, Dictionary<string, string>> FileinfosWithTime = new Dictionary<DateTime, Dictionary<string, string>>();
-            DateTime dateTime = DateTime.Now;
-            Dictionary<string, string> Fileinfos = new Dictionary<string, string>();
-            TargetFiles.Clear();
-            foreach (var fileMode in SrcFiles.Where(x => x.IsCheck))
-            {
-                var tarFile = tarPath +"\\"+ fileMode.Name;
-                FileInfo file = new FileInfo(tarFile);
-
-                string backupFileName = DateTime.Now.ToString("yyyyMMddHHmmss.fff");
-                if (file.Exists)
+                //判断相同路径
+                Console.WriteLine("[CopyFiles] srcPath:" + srcPath);
+                Console.WriteLine("[CopyFiles] tarPath:" + tarPath);
+                if (!Directory.Exists(srcPath) || !Directory.Exists(tarPath) || Directory.Equals(srcPath, tarPath))
                 {
-                    //备份
-                    backupFileName = string.Format("{0}+{1}", fileMode.Name, DateTime.Now.ToString("yyyyMMddHHmmss.fff"));
-                    var backupFile = string.Format("{0}{1}", tarPath + "\\", backupFileName);
-                    File.Copy(tarFile, backupFile, true);
+                    Console.WriteLine("file path is error,src is the same to target");
+                    System.Windows.MessageBox.Show("非法的文件路径，请检查后重试！", "非法的文件路径", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+                    return;
                 }
-
-                var srcFile = fileMode.FilePath + "\\" + fileMode.Name;
-                var replaceFile = tarPath + "\\" + fileMode.Name;
-                Console.WriteLine("srcFile:"+ srcFile);
-                Console.WriteLine("replaceFile:" + replaceFile);
-                Fileinfos.Add(backupFileName, fileMode.Name);
-
-                File.Copy(srcFile, replaceFile,true);
-
-                Console.WriteLine("Success to replace,fileName:"+ fileMode.Name);
-
-                var targetFileMode = new ReplaceFile.Models.FileMode()
+                if (!SrcFiles.Any(x => x.IsCheck))
                 {
-                    Name = System.IO.Path.GetFileName(replaceFile),
-                    FilePath = tarPath,
-                };
-                targetFileMode.FilterSelectedFiles -= FilterTargetFiles;
-                targetFileMode.FilterSelectedFiles += FilterTargetFiles;
-                targetFileMode.IsCheck = true;
-                TargetFiles.Add(targetFileMode);
-                Console.WriteLine("targetFileMode Name: " + targetFileMode.Name);
-                
+                    Console.WriteLine("[CopyFiles] no files is selected ");
+                    return;
+                }
+                if (!Directory.Exists(tarPath))
+                {
+                    Directory.CreateDirectory(tarPath);
+                }
+                Dictionary<DateTime, Dictionary<string, string>> FileinfosWithTime = new Dictionary<DateTime, Dictionary<string, string>>();
+                DateTime dateTime = DateTime.Now;
+                Dictionary<string, string> Fileinfos = new Dictionary<string, string>();
+                TargetFiles.Clear();
+                string occupiedFiles = string.Empty;
+                foreach (var fileMode in SrcFiles.Where(x => x.IsCheck))
+                {
+                    var tarFile = Path.Combine(tarPath, fileMode.Name);
+                    FileInfo file = new FileInfo(tarFile);
+                    string backupFileName = DateTime.Now.ToString("yyyyMMddHHmmss.fff");
+                    if (file.Exists)
+                    {
+                        if (IsFileOccupied(tarFile))
+                        {
+                            occupiedFiles = occupiedFiles + "\n" + fileMode.Name;
+                            continue;
+                        }
+                        //备份
+                        backupFileName = string.Format("{0}+{1}", fileMode.Name, DateTime.Now.ToString("yyyyMMddHHmmss.fff"));
+                        var backupFile = string.Format("{0}{1}", tarPath + "\\", backupFileName);
+                        File.Copy(tarFile, backupFile, true);
+                    }
+
+                    var srcFile = fileMode.FilePath + "\\" + fileMode.Name;
+                    var replaceFile = tarPath + "\\" + fileMode.Name;
+                    Console.WriteLine("srcFile:" + srcFile);
+                    Console.WriteLine("replaceFile:" + replaceFile);
+                    Fileinfos.Add(backupFileName, fileMode.Name);
+
+                    File.Copy(srcFile, replaceFile, true);
+
+                    Console.WriteLine("Success to replace,fileName:" + fileMode.Name);
+
+                    var targetFileMode = new ReplaceFile.Models.FileMode()
+                    {
+                        Name = System.IO.Path.GetFileName(replaceFile),
+                        FilePath = tarPath,
+                    };
+                    targetFileMode.FilterSelectedFiles -= FilterTargetFiles;
+                    targetFileMode.FilterSelectedFiles += FilterTargetFiles;
+                    targetFileMode.IsCheck = true;
+                    TargetFiles.Add(targetFileMode);
+                    Console.WriteLine("targetFileMode Name: " + targetFileMode.Name);
+
+                }
+                if (Fileinfos.Count > 0)
+                {
+                    FileinfosWithTime.Add(dateTime, Fileinfos);
+                    _lastReplaceFileinfos = FileinfosWithTime;
+                    WriteConfig(FileinfosWithTime);
+                }
+                if (!string.IsNullOrEmpty(occupiedFiles))
+                {
+                    System.Windows.MessageBox.Show("部分文件因文件被占用而替换失败，请检查后重试！\n" + occupiedFiles, "文件替换失败", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                }
             }
-            if (Fileinfos.Count > 0)
+            catch (Exception ex)
             {
-                FileinfosWithTime.Add(dateTime, Fileinfos);
-                _lastReplaceFileinfos = FileinfosWithTime;
-                WriteConfig(FileinfosWithTime);
+                 System.Windows.MessageBox.Show("替换文件时出现未知错误，请检查后重试！\n "+ ex.ToString(), "文件替换失败", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             }
 
         }

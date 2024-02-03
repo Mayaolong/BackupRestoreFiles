@@ -32,7 +32,8 @@
                          Grid.Column="1"
                          VerticalContentAlignment="Center"
                          HorizontalContentAlignment="Left"
-                         Text="{Binding SrcFilePath}">
+                         Text="{Binding SrcFilePath}"
+                         IsEnabled="False">
                     <TextBox.ToolTip>
                         <ToolTip>
                             <StackPanel Orientation="Horizontal">
@@ -59,7 +60,8 @@
                          Grid.Column="1" 
                          VerticalContentAlignment="Center"
                          HorizontalContentAlignment="Left"
-                         Text="{Binding TarFilePath}">
+                         Text="{Binding TarFilePath}"
+                         IsEnabled="False">
                     <TextBox.ToolTip>
                         <ToolTip>
                             <StackPanel Orientation="Horizontal">
